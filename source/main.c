@@ -348,6 +348,63 @@ int bellTick(int state) {
 	return state;
 }
 
+enum Custom_States { waitInit, enterCombo, waitRelease };
+unsigned char combo[4];
+
+int customTick(int state){
+	unsigned char button = ~PINB & 0x80;
+	switch(state){
+		case waitInit:
+			state = ( (output == 0x0E) && button ) ? enterCombo : waitInit;	
+			break;
+		case enterCombo:
+			state = waitInit;
+			break;
+		default:
+			state = waitInit;
+			break;
+
+		case waitInit:
+			break;
+		case enterCombo:
+			if (i < 4 && button && (output == 0x0E)) {
+				state = enterCombo;
+			}
+
+			else{
+				state = waitRelease;
+			}
+		case waitRelease:
+			state = !( (output == 0x0E) && button ) ? waitInit : waitRelease;
+		       break;	
+		default:
+			break;
+
+		case waitInit:
+			break;
+		case enterCombo:
+			if (output == 0x01) { combo[i] = output; ++i; }
+                        if (output == 0x02) { combo[i] = output; ++i; }
+                        if (output == 0x03) { combo[i] = output; ++i; }
+                        if (output == 0x04) { combo[i] = output; ++i; }
+                        if (output == 0x05) { combo[i] = output; ++i; }
+                        if (output == 0x06) { combo[i] = output; ++i; }
+                        if (output == 0x07) { combo[i] = output; ++i; }
+                        if (output == 0x08) { combo[i] = output; ++i; }
+                        if (output == 0x09) { combo[i] = output; ++i; }
+                        if (output == 0x0A) { combo[i] = output; ++i; }
+                        if (output == 0x0B) { combo[i] = output; ++i; }
+                        if (output == 0x0C) { combo[i] = output; ++i; }
+                        if (output == 0x0D) { combo[i] = output; ++i; }
+                        if (output == 0x00) { combo[i] = output; ++i; }
+			break;
+		case waitRelease:
+			break;
+
+	}
+}
+
+
 int main(void) {
     /* Insert DDR and PORT initializations */
 	DDRA = 0x00; PORTA = 0xFF;
