@@ -295,7 +295,7 @@ unsigned char i = 0;
 unsigned counter = 0;
 
 int bellTick(int state) {
-	unsigned char button = ~PINA & 0x01;
+	unsigned char button = ~PINA & 0x80;
 
 	switch(state){
 		case init:

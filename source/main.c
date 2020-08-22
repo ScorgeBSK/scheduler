@@ -47,6 +47,7 @@ void PWM_off() {
 unsigned char output = 0x00;
 unsigned char door = 0x00;
 unsigned char led = 0x00;
+unsigned char led1 = 0x00;
 
 enum Keypad_States { keypad_display };
 
@@ -80,7 +81,7 @@ int keypadTick(int state){
 				case 'B': output = 0x0B; led = 0x80; break;
 				case 'C': output = 0x0C; led = 0x80; break;
 				case 'D': output = 0x0D; led = 0x80; break;
-				case '*': output = 0x0E; break;
+				case '*': output = 0x0E; led = 0x80; break;
 				case '0': output = 0x00; led = 0x80; break;
 				case '#': output = 0x0F; led = 0x80; break;
 				default: output = 0x1B; led = 0x00; break; // Should never occur. Middle LED off.
@@ -100,7 +101,6 @@ enum Sequence_States { wait, poundPress, poundRelease,
 
 int sequenceTick(int state){
 	unsigned char button = ~PINB & 0x80;
-
 	switch(state){
 
 		case wait:
@@ -222,55 +222,43 @@ int sequenceTick(int state){
 		case wait:
 			break;
 		case poundPress:
-			led = 0x80;
 			break;
 		case poundRelease:
-			led = 0x00;
 			break;
 
 		case waitSeq1:
 			break;
 		case seq1Press:
-			led = 0x80;
 			break;
 		case seq1Release:
-			led = 0x00;
 			break;
 
 		case waitSeq2:
                         break;
                 case seq2Press:
-                        led = 0x80;
                         break;
                 case seq2Release:
-                        led = 0x00;
                         break;
 
 		case waitSeq3:
                         break;
                 case seq3Press:
-                        led = 0x80;
                         break;
                 case seq3Release:
-                        led = 0x00;
                         break;
 
 		case waitSeq4:
                         break;
                 case seq4Press:
-                        led = 0x80;
                         break;
                 case seq4Release:
-                        led = 0x00;
                         break;
 
                 case waitSeq5:
                         break;
                 case seq5Press:
-                        led = 0x80;
                         break;
                 case seq5Release:
-                        led = 0x00;
 			door = 1;
                         break;
 		
@@ -295,7 +283,7 @@ unsigned char i = 0;
 unsigned counter = 0;
 
 int bellTick(int state) {
-	unsigned char button = ~PINA & 0x01;
+	unsigned char button = ~PINA & 0x80;
 
 	switch(state){
 		case init:
@@ -348,29 +336,27 @@ int bellTick(int state) {
 	return state;
 }
 
-enum Custom_States { waitInit, enterCombo, waitComboRelease };
+enum Custom_States { waitInit, enterCombo, waitComboInput, enterComboRelease, waitComboRelease };
 unsigned char combo[4];
 unsigned char j = 0;
-
+unsigned char currOutput = 0;
 int customTick(int state){
 	unsigned char button = ~PINB & 0x80;
-	 
 	switch(state){
 		case waitInit:
 			state = ( (output == 0x0E) && button ) ? enterCombo : waitInit;	
 			break;
 		case enterCombo:
-/*			if(j >= 4){
-				state = waitComboRelease;
-			}	
-			else{
-				state = enterCombo;
-			}
-*/			
 			state = waitComboRelease;
 			break;
+		case waitComboInput:
+			state = enterComboRelease;
+			break;
+		case enterComboRelease:
+			state = (output != currOutput) ? waitComboInput : enterComboRelease;
+		       break;	       
                 case waitComboRelease:
-                        state = !( (output == 0x0E) && button ) ? waitInit : waitComboRelease;
+                        state = waitInit;
                        break;
 		default:
 			state = waitInit;
@@ -379,26 +365,18 @@ int customTick(int state){
 	
 	switch(state) {
 		case waitInit:
-			led = 0;
+			led1 = 0;
+			j = 0;
 			break;
 		case enterCombo:
-			led = 0x80;
-/*			if (output == 0x01) { combo[i] = output; ++i; }
-                        if (output == 0x02) { combo[i] = output; ++i; }
-                        if (output == 0x03) { combo[i] = output; ++i; }
-                        if (output == 0x04) { combo[i] = output; ++i; }
-                        if (output == 0x05) { combo[i] = output; ++i; }
-                        if (output == 0x06) { combo[i] = output; ++i; }
-                        if (output == 0x07) { combo[i] = output; ++i; }
-                        if (output == 0x08) { combo[i] = output; ++i; }
-                        if (output == 0x09) { combo[i] = output; ++i; }
-                        if (output == 0x0A) { combo[i] = output; ++i; }
-                        if (output == 0x0B) { combo[i] = output; ++i; }
-                        if (output == 0x0C) { combo[i] = output; ++i; }
-                        if (output == 0x0D) { combo[i] = output; ++i; }
-                        if (output == 0x00) { combo[i] = output; ++i; }
-*/			break;
+			led1 = 0x40;
+			break;
+		case waitComboInput:
+			break;
+		case enterComboRelease:
+			break;
 		case waitComboRelease:
+			j = 0;
 			break;
 		default:
 			break;
@@ -456,7 +434,7 @@ int main(void) {
 			tasks[i]->elapsedTime += 1;
 		}
 		PORTB = door;
-		PORTD = led;	
+		PORTD = led | led1;	//debug indicators
 		while(!TimerFlag){
 			TimerFlag = 0;
 		}
