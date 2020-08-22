@@ -66,24 +66,24 @@ int keypadTick(int state){
 	switch(state){
 		case keypad_display:
 			switch (x) {
-				case '\0': output = 0x1F; break; // All 5 LEDs on
-				case '1': output = 0x01; break; // hex equivalent
-				case '2': output = 0x02; break;
-				case '3': output = 0x03; break;
-				case '4': output = 0x04; break;
-				case '5': output = 0x05; break;
-				case '6': output = 0x06; break;
-				case '7': output = 0x07; break;
-				case '8': output = 0x08; break;
-				case '9': output = 0x09; break;
-				case 'A': output = 0x0A; break;
-				case 'B': output = 0x0B; break;
-				case 'C': output = 0x0C; break;
-				case 'D': output = 0x0D; break;
+				case '\0': output = 0x1F; led = 0x00; break; // All 5 LEDs on
+				case '1': output = 0x01; led = 0x80; break; // hex equivalent
+				case '2': output = 0x02; led = 0x80; break;
+				case '3': output = 0x03; led = 0x80; break;
+				case '4': output = 0x04; led = 0x80; break;
+				case '5': output = 0x05; led = 0x80; break;
+				case '6': output = 0x06; led = 0x80; break;
+				case '7': output = 0x07; led = 0x80; break;
+				case '8': output = 0x08; led = 0x80; break;
+				case '9': output = 0x09; led = 0x80; break;
+				case 'A': output = 0x0A; led = 0x80; break;
+				case 'B': output = 0x0B; led = 0x80; break;
+				case 'C': output = 0x0C; led = 0x80; break;
+				case 'D': output = 0x0D; led = 0x80; break;
 				case '*': output = 0x0E; break;
-				case '0': output = 0x00; break;
-				case '#': output = 0x0F; break;
-				default: output = 0x1B; break; // Should never occur. Middle LED off.
+				case '0': output = 0x00; led = 0x80; break;
+				case '#': output = 0x0F; led = 0x80; break;
+				default: output = 0x1B; led = 0x00; break; // Should never occur. Middle LED off.
 			}
 			break;
 		}
@@ -348,42 +348,42 @@ int bellTick(int state) {
 	return state;
 }
 
-enum Custom_States { waitInit, enterCombo, waitRelease };
+enum Custom_States { waitInit, enterCombo, waitComboRelease };
 unsigned char combo[4];
+unsigned char j = 0;
 
 int customTick(int state){
 	unsigned char button = ~PINB & 0x80;
+	 
 	switch(state){
 		case waitInit:
 			state = ( (output == 0x0E) && button ) ? enterCombo : waitInit;	
 			break;
 		case enterCombo:
-			state = waitInit;
-			break;
-		default:
-			state = waitInit;
-			break;
-
-		case waitInit:
-			break;
-		case enterCombo:
-			if (i < 4 && button && (output == 0x0E)) {
+/*			if(j >= 4){
+				state = waitComboRelease;
+			}	
+			else{
 				state = enterCombo;
 			}
-
-			else{
-				state = waitRelease;
-			}
-		case waitRelease:
-			state = !( (output == 0x0E) && button ) ? waitInit : waitRelease;
-		       break;	
-		default:
+*/			
+			state = waitComboRelease;
 			break;
-
+                case waitComboRelease:
+                        state = !( (output == 0x0E) && button ) ? waitInit : waitComboRelease;
+                       break;
+		default:
+			state = waitInit;
+			break;
+	}
+	
+	switch(state) {
 		case waitInit:
+			led = 0;
 			break;
 		case enterCombo:
-			if (output == 0x01) { combo[i] = output; ++i; }
+			led = 0x80;
+/*			if (output == 0x01) { combo[i] = output; ++i; }
                         if (output == 0x02) { combo[i] = output; ++i; }
                         if (output == 0x03) { combo[i] = output; ++i; }
                         if (output == 0x04) { combo[i] = output; ++i; }
@@ -397,11 +397,14 @@ int customTick(int state){
                         if (output == 0x0C) { combo[i] = output; ++i; }
                         if (output == 0x0D) { combo[i] = output; ++i; }
                         if (output == 0x00) { combo[i] = output; ++i; }
+*/			break;
+		case waitComboRelease:
 			break;
-		case waitRelease:
+		default:
 			break;
 
 	}
+	return state;
 }
 
 
@@ -412,8 +415,8 @@ int main(void) {
 	DDRC = 0xF0; PORTC = 0x0F;
 	DDRD = 0xFF; PORTD = 0x00;
 
-	static task task1, task2, task3 ;
-	task *tasks[] = { &task1, &task2, &task3 };
+	static task task1, task2, task3, task4 ;
+	task *tasks[] = { &task1, &task2, &task3, &task4 };
 	const unsigned short numTasks = sizeof(tasks)/sizeof(task*);
 
 	const char start = -1;
@@ -432,6 +435,11 @@ int main(void) {
 	task3.period = 200;
 	task3.elapsedTime = task3.period;
 	task3.TickFct = &bellTick;
+
+	task4.state = start;
+	task4.period = 1;
+	task4.elapsedTime = task4.period;
+	task4.TickFct = &customTick;
 
 	TimerSet(1);
 	TimerOn();
